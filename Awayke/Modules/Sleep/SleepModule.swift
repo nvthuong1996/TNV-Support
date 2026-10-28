@@ -1,13 +1,17 @@
 //
-//  AppDelegate.swift
-//  Awayke
+//  SleepModule.swift
+//  TNV Support
+//
+//  Keep-awake module: prevents sleep with the lid closed by toggling
+//  `pmset disablesleep`, with timed and until-lid-reopens sessions and
+//  battery auto-off. Left-click its menu bar icon to toggle, right-click
+//  for the menu.
 //
 
 import AppKit
-import ServiceManagement
-import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class SleepModule: NSObject, AppModule {
+    private weak var context: ModuleContext?
     private var statusItem: NSStatusItem?
     private let powerManager = PowerManager()
     private let helper = HelperManager.shared
@@ -21,11 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let thresholdOptions = [0, 10, 20, 30]
     private let durationOptions = [15, 30, 60, 120]
 
-    /// The user's intent: do they want Awayke on?
+    /// The user's intent: do they want keep-awake on?
     private var intent = false
-    /// Battery auto-off is currently holding Awayke off.
+    /// Battery auto-off is currently holding keep-awake off.
     private var suspendedForBattery = false
-    /// The user turned Awayke on while already below the floor. Auto-off
+    /// The user turned keep-awake on while already below the floor. Auto-off
     /// stands down until the machine next reaches AC.
     private var overrideBattery = false
     /// Most recent battery reading, for re-evaluating on threshold change.
@@ -37,6 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// A session can end while a battery-driven pmset change is still in
     /// flight. Remember that event so it is not lost.
     private var pendingSessionEnd: SessionEndReason?
+    /// Set once `stop` runs. Completions of pmset calls issued before that
+    /// must not re-disable sleep or re-take the display assertion after
+    /// cleanup restored the system.
+    private var isStopped = false
 
     private enum SessionEndReason {
         case timer
@@ -59,8 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// What is actually applied to the system.
     private var effectiveActive: Bool { intent && !suspendedForBattery }
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+    // MARK: - AppModule
+
+    func start(context: ModuleContext) {
+        self.context = context
         helper.register()
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -86,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if threshold > 0 {
-            requestNotificationAuthorization()
+            context.notifier.requestAuthorization()
         }
 
         batteryMonitor.onChange = { [weak self] snapshot in
@@ -107,20 +117,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lidMonitor.start()
     }
 
-    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // Never leave the system with sleep disabled. Defer termination
-        // until the helper (or osascript fallback) finishes flipping
-        // pmset back off, so the main run loop stays alive for any auth
-        // UI the fallback path may need to show.
-        guard effectiveActive else { return .terminateNow }
+    func stop(completion: @escaping () -> Void) {
+        isStopped = true
+        batteryMonitor.onChange = nil
+        batteryMonitor.stop()
+        lidMonitor.onChange = nil
+        lidMonitor.stop()
+        autoOffTimer.onExpire = nil
+        autoOffTimer.onTick = nil
+        autoOffTimer.cancel()
+        lidSession.cancel()
+        pendingSessionEnd = nil
+
+        if let item = statusItem {
+            NSStatusBar.system.removeStatusItem(item)
+        }
+        statusItem = nil
+
+        // Never leave the system with sleep disabled. Hold the caller
+        // (module turn-off or app termination) until the helper or the
+        // osascript fallback finishes flipping pmset back off. A change
+        // still in flight may be about to disable sleep, so restore in
+        // that case too.
+        guard effectiveActive || powerChangeInFlight else {
+            displayKeeper.allow()
+            completion()
+            return
+        }
 
         powerManager.disableSleep(false) { _ in
             DispatchQueue.main.async {
+                self.intent = false
                 self.displayKeeper.allow()
-                NSApp.reply(toApplicationShouldTerminate: true)
+                completion()
             }
         }
-        return .terminateLater
+    }
+
+    /// Removes the privileged helper from System Settings. Safe to call
+    /// while the module is turned off.
+    static func uninstall() {
+        HelperManager.shared.unregister()
     }
 
     @objc private func handleClick(_ sender: NSStatusBarButton) {
@@ -144,12 +181,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setIntent(_ on: Bool,
                            timerMinutes: Int? = nil,
                            untilLidReopens: Bool = false) {
-        guard !powerChangeInFlight else { return }
+        guard !isStopped, !powerChangeInFlight else { return }
         powerChangeInFlight = true
 
         powerManager.disableSleep(on) { [weak self] result in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, !self.isStopped else { return }
                 self.powerChangeInFlight = false
                 switch result {
                 case .success:
@@ -194,6 +231,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// timer and lid sessions so both interact identically with battery
     /// suspension and in-flight helper calls.
     private func endSession(reason: SessionEndReason) {
+        guard !isStopped else { return }
         autoOffTimer.cancel()
         lidSession.cancel()
         guard intent else { return }
@@ -208,7 +246,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             overrideBattery = false
             syncDisplayKeeper()
             refreshStatusItem()
-            notify(title: "TNV Support turned off", body: reason.notificationBody)
+            notify(title: "Keep Awake turned off", body: reason.notificationBody)
             return
         }
 
@@ -220,7 +258,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         powerManager.disableSleep(false) { [weak self] result in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, !self.isStopped else { return }
                 self.powerChangeInFlight = false
                 switch result {
                 case .success:
@@ -228,7 +266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.overrideBattery = false
                     self.syncDisplayKeeper()
                     self.refreshStatusItem()
-                    self.notify(title: "TNV Support turned off", body: reason.notificationBody)
+                    self.notify(title: "Keep Awake turned off", body: reason.notificationBody)
                 case .failure(let error):
                     // Do not claim the session ended if pmset could not be
                     // restored. The icon remains active and the error makes
@@ -257,10 +295,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func syncDisplayKeeper() {
+        guard !isStopped else { return }
         if effectiveActive { displayKeeper.prevent() } else { displayKeeper.allow() }
     }
 
     private func handleBattery(_ snapshot: BatterySnapshot) {
+        guard !isStopped else { return }
         lastSnapshot = snapshot
         overrideBattery = AutoOffPolicy.shouldKeepOverride(overrideBattery, onAC: snapshot.onAC)
 
@@ -283,7 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let suspending = (action == .suspend)
         powerManager.disableSleep(!suspending) { [weak self] result in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, !self.isStopped else { return }
                 self.powerChangeInFlight = false
                 guard case .success = result else {
                     self.processPendingSessionEnd()
@@ -294,10 +334,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.syncDisplayKeeper()
                 self.refreshStatusItem()
                 if suspending {
-                    self.notify(title: "TNV Support turned off",
+                    self.notify(title: "Keep Awake turned off",
                                 body: "Battery dropped below \(self.threshold)%.")
                 } else {
-                    self.notify(title: "TNV Support back on",
+                    self.notify(title: "Keep Awake back on",
                                 body: "Charging - sleep prevention resumed.")
                 }
 
@@ -344,21 +384,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(helperRow)
         }
 
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Uninstall TNV Support…", action: #selector(menuUninstall), keyEquivalent: ""))
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit TNV Support", action: #selector(menuQuit), keyEquivalent: "q"))
-
         for item in menu.items where item.action != nil {
             item.target = self
         }
+
+        // Shared app items (module list, Uninstall, Quit) carry their own target.
+        for item in context?.appMenuItems() ?? [] {
+            menu.addItem(item)
+        }
+
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)
         statusItem?.menu = nil
     }
 
     private func keepAwakeSubmenuItem() -> NSMenuItem {
-        let parent = NSMenuItem(title: "Keep awayke for", action: nil, keyEquivalent: "")
+        let parent = NSMenuItem(title: "Keep awake for", action: nil, keyEquivalent: "")
         let submenu = NSMenu()
 
         let lidSessionItem = NSMenuItem(
@@ -403,7 +444,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Rounded up to the next whole minute, so a live countdown never
-    /// reads "0m" while Awayke is still on.
+    /// reads "0m" while keep-awake is still on.
     private func formatRemaining(_ seconds: TimeInterval) -> String {
         let minutes = max(1, Int((seconds / 60).rounded(.up)))
         if minutes < 60 { return "\(minutes)m" }
@@ -448,7 +489,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuKeepAwakeFor(_ sender: NSMenuItem) {
         let minutes = sender.tag
         if minutes > 0 {
-            requestNotificationAuthorization()
+            context?.notifier.requestAuthorization()
         }
 
         // Already on: just (re)arm the countdown. Skipping the pmset
@@ -470,7 +511,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func menuKeepAwakeUntilLidReopens() {
-        requestNotificationAuthorization()
+        context?.notifier.requestAuthorization()
 
         guard effectiveActive else {
             setIntent(true, untilLidReopens: true)
@@ -485,7 +526,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuSetThreshold(_ sender: NSMenuItem) {
         threshold = sender.tag
         if threshold > 0 {
-            requestNotificationAuthorization()
+            context?.notifier.requestAuthorization()
         }
         // Re-evaluate against the latest reading so a newly-set threshold
         // that is already breached suspends immediately.
@@ -495,33 +536,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func menuApproveHelper() { helper.revealInSystemSettings() }
-    @objc private func menuQuit() { NSApp.terminate(nil) }
-
-    @objc private func menuUninstall() {
-        let alert = NSAlert()
-        alert.messageText = "Uninstall TNV Support?"
-        alert.informativeText = "This will remove TNV Support's background helper from System Settings and quit the app. You can then move TNV Support.app to the Trash."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Uninstall")
-        alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-
-        helper.unregister()
-        NSApp.terminate(nil)
-    }
-
-    // MARK: - Notifications
-
-    private func requestNotificationAuthorization() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
-    }
 
     private func notify(title: String, body: String) {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
+        context?.notifier.post(title: title, body: body)
     }
 
     // MARK: - Status item rendering
@@ -540,15 +557,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.contentTintColor = nil
         button.title = ""
         if suspendedForBattery {
-            button.toolTip = "TNV Support paused - battery below \(threshold)%. Plug in to resume."
+            button.toolTip = "Keep Awake paused - battery below \(threshold)%. Plug in to resume."
         } else if effectiveActive, lidSession.isActive {
             button.toolTip = lidSession.isWaitingForClose
-                ? "TNV Support is on - it will turn off after the lid is closed and reopened."
-                : "TNV Support is on - it will turn off when the lid is reopened."
+                ? "Keep Awake is on - it will turn off after the lid is closed and reopened."
+                : "Keep Awake is on - it will turn off when the lid is reopened."
         } else if effectiveActive, let remaining = autoOffTimer.remaining {
-            button.toolTip = "TNV Support is on - turning off in \(formatRemaining(remaining))."
+            button.toolTip = "Keep Awake is on - turning off in \(formatRemaining(remaining))."
         } else {
-            button.toolTip = effectiveActive ? "TNV Support is on!" : "TNV Support is off. Click to turn it on."
+            button.toolTip = effectiveActive ? "Keep Awake is on!" : "Keep Awake is off. Click to turn it on."
         }
     }
 

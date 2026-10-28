@@ -1,12 +1,12 @@
 //
-//  AwaykeApp.swift
-//  Awayke
+//  TNVSupportApp.swift
+//  TNV Support
 //
 
 import SwiftUI
 
 @main
-struct AwaykeApp: App {
+struct TNVSupportApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
