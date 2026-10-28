@@ -22,9 +22,9 @@ enum HelperError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .helperUnavailable:
-            return "Awayke's privileged helper isn't approved yet."
+            return "TNV Support's privileged helper isn't approved yet."
         case .connectionFailed(let detail):
-            return "Couldn't connect to Awayke's helper: \(detail)"
+            return "Couldn't connect to TNV Support's helper: \(detail)"
         case .remoteError(let underlying):
             return underlying.localizedDescription
         }
@@ -63,7 +63,7 @@ final class HelperManager {
         do {
             try service.register()
         } catch {
-            NSLog("Awayke: SMAppService.register() failed: \((error as NSError).localizedDescription)")
+            NSLog("TNV Support: SMAppService.register() failed: \((error as NSError).localizedDescription)")
         }
     }
 
@@ -75,7 +75,7 @@ final class HelperManager {
         do {
             try service.unregister()
         } catch {
-            NSLog("Awayke: SMAppService.unregister() failed: \((error as NSError).localizedDescription)")
+            NSLog("TNV Support: SMAppService.unregister() failed: \((error as NSError).localizedDescription)")
         }
     }
 

@@ -63,15 +63,15 @@ jobs:
 
       - name: Verify signatures
         run: |
-          APP=build/Build/Products/Release/Awayke.app
+          APP="build/Build/Products/Release/TNV Support.app"
           codesign --verify --strict --verbose=2 "$APP"
           codesign --verify --strict --verbose=2 "$APP/Contents/MacOS/daemonphantom.Awayke.Helper"
 
       - name: Zip for notarization
         run: |
           ditto -c -k --keepParent \
-            build/Build/Products/Release/Awayke.app \
-            Awayke.app.zip
+            "build/Build/Products/Release/TNV Support.app" \
+            TNV-Support.app.zip
 
       - name: Notarize
         env:
@@ -80,7 +80,7 @@ jobs:
           NOTARY_PASSWORD: ${{ secrets.APPLE_NOTARY_PASSWORD }}
         run: |
           set +e
-          SUBMIT_OUTPUT=$(xcrun notarytool submit Awayke.app.zip \
+          SUBMIT_OUTPUT=$(xcrun notarytool submit TNV-Support.app.zip \
             --apple-id "$APPLE_ID" \
             --team-id "$TEAM_ID" \
             --password "$NOTARY_PASSWORD" \
@@ -102,25 +102,25 @@ jobs:
 
       - name: Staple
         run: |
-          xcrun stapler staple build/Build/Products/Release/Awayke.app
+          xcrun stapler staple "build/Build/Products/Release/TNV Support.app"
 
       - name: Re-zip with stapled ticket
         run: |
-          rm -f Awayke.app.zip
+          rm -f TNV-Support.app.zip
           ditto -c -k --keepParent \
-            build/Build/Products/Release/Awayke.app \
-            Awayke.app.zip
+            "build/Build/Products/Release/TNV Support.app" \
+            TNV-Support.app.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Awayke ${{ github.ref_name }}"
+          name: "TNV Support ${{ github.ref_name }}"
           body: |
-            1. Download **Awayke.app.zip**, unzip, drag to `/Applications`, open.
-            2. On first launch macOS will ask you to approve Awayke's background helper. Approve it once and toggling sleep is instant and silent from then on.
+            1. Download **TNV-Support.app.zip**, unzip, drag to `/Applications`, open.
+            2. On first launch macOS will ask you to approve TNV Support's background helper. Approve it once and toggling sleep is instant and silent from then on.
 
             <img width="372" height="141" alt="bgactivity" src="https://github.com/user-attachments/assets/02157a1b-e462-4905-b3b3-a0f7c2c6c235" />
-          files: Awayke.app.zip
+          files: TNV-Support.app.zip
           generate_release_notes: true
 
       - name: Clean up keychain

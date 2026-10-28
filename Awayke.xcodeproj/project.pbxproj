@@ -54,7 +54,7 @@
 		3B9579A53B199F110C734AE7 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		403D4D1091F6AB1DE294467F /* AwaykeHelperProtocol.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AwaykeHelperProtocol.swift; sourceTree = "<group>"; };
 		58E4984D1966ADF326E5DF03 /* AwaykeHelper.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AwaykeHelper.entitlements; sourceTree = "<group>"; };
-		63929AEB2FBA1D060015E6CF /* Awayke.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Awayke.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		63929AEB2FBA1D060015E6CF /* TNV Support.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TNV Support.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A0CE4675BB92A00559876EA /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9008D6280D64E35A7E26F390 /* daemonphantom.Awayke.Helper.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = daemonphantom.Awayke.Helper.plist; sourceTree = "<group>"; };
 		BF17FFB0B2FED00859C33618 /* AwaykeHelper */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = text; path = AwaykeHelper; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -122,7 +122,7 @@
 		63929AEC2FBA1D060015E6CF /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				63929AEB2FBA1D060015E6CF /* Awayke.app */,
+				63929AEB2FBA1D060015E6CF /* TNV Support.app */,
 				BF17FFB0B2FED00859C33618 /* AwaykeHelper */,
 			);
 			name = Products;
@@ -187,7 +187,7 @@
 			);
 			name = Awayke;
 			productName = Awayke;
-			productReference = 63929AEB2FBA1D060015E6CF /* Awayke.app */;
+			productReference = 63929AEB2FBA1D060015E6CF /* TNV Support.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -404,7 +404,7 @@
 				);
 				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = daemonphantom.Awayke;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "TNV Support";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -436,7 +436,7 @@
 				);
 				MARKETING_VERSION = 2.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = daemonphantom.Awayke;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "TNV Support";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;

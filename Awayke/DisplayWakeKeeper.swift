@@ -18,7 +18,7 @@ final class DisplayWakeKeeper {
         let result = IOPMAssertionCreateWithName(
             kIOPMAssertPreventUserIdleDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "Awayke is active" as CFString,
+            "TNV Support is active" as CFString,
             &assertionID
         )
         if result != kIOReturnSuccess {

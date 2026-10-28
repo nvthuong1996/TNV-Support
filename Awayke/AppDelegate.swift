@@ -208,7 +208,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             overrideBattery = false
             syncDisplayKeeper()
             refreshStatusItem()
-            notify(title: "Awayke turned off", body: reason.notificationBody)
+            notify(title: "TNV Support turned off", body: reason.notificationBody)
             return
         }
 
@@ -228,7 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.overrideBattery = false
                     self.syncDisplayKeeper()
                     self.refreshStatusItem()
-                    self.notify(title: "Awayke turned off", body: reason.notificationBody)
+                    self.notify(title: "TNV Support turned off", body: reason.notificationBody)
                 case .failure(let error):
                     // Do not claim the session ended if pmset could not be
                     // restored. The icon remains active and the error makes
@@ -294,10 +294,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.syncDisplayKeeper()
                 self.refreshStatusItem()
                 if suspending {
-                    self.notify(title: "Awayke turned off",
+                    self.notify(title: "TNV Support turned off",
                                 body: "Battery dropped below \(self.threshold)%.")
                 } else {
-                    self.notify(title: "Awayke back on",
+                    self.notify(title: "TNV Support back on",
                                 body: "Charging - sleep prevention resumed.")
                 }
 
@@ -345,9 +345,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Uninstall Awayke…", action: #selector(menuUninstall), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Uninstall TNV Support…", action: #selector(menuUninstall), keyEquivalent: ""))
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Awayke", action: #selector(menuQuit), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit TNV Support", action: #selector(menuQuit), keyEquivalent: "q"))
 
         for item in menu.items where item.action != nil {
             item.target = self
@@ -499,8 +499,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func menuUninstall() {
         let alert = NSAlert()
-        alert.messageText = "Uninstall Awayke?"
-        alert.informativeText = "This will remove Awayke's background helper from System Settings and quit the app. You can then move Awayke.app to the Trash."
+        alert.messageText = "Uninstall TNV Support?"
+        alert.informativeText = "This will remove TNV Support's background helper from System Settings and quit the app. You can then move TNV Support.app to the Trash."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Uninstall")
         alert.addButton(withTitle: "Cancel")
@@ -540,15 +540,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.contentTintColor = nil
         button.title = ""
         if suspendedForBattery {
-            button.toolTip = "Awayke paused - battery below \(threshold)%. Plug in to resume."
+            button.toolTip = "TNV Support paused - battery below \(threshold)%. Plug in to resume."
         } else if effectiveActive, lidSession.isActive {
             button.toolTip = lidSession.isWaitingForClose
-                ? "Awayke is on - it will turn off after the lid is closed and reopened."
-                : "Awayke is on - it will turn off when the lid is reopened."
+                ? "TNV Support is on - it will turn off after the lid is closed and reopened."
+                : "TNV Support is on - it will turn off when the lid is reopened."
         } else if effectiveActive, let remaining = autoOffTimer.remaining {
-            button.toolTip = "Awayke is on - turning off in \(formatRemaining(remaining))."
+            button.toolTip = "TNV Support is on - turning off in \(formatRemaining(remaining))."
         } else {
-            button.toolTip = effectiveActive ? "Awayke is on!" : "Awayke is off. Click to turn it on."
+            button.toolTip = effectiveActive ? "TNV Support is on!" : "TNV Support is off. Click to turn it on."
         }
     }
 
@@ -564,7 +564,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func presentError(_ error: Error) {
         let alert = NSAlert()
-        alert.messageText = "Awayke couldn't toggle sleep."
+        alert.messageText = "TNV Support couldn't toggle sleep."
         alert.informativeText = error.localizedDescription
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
